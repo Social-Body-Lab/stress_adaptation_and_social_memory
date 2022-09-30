@@ -1,0 +1,227 @@
+---
+title: "Power analyses and sample size determination"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(extrafont)
+library(faux)
+library(dplyr)
+library(lme4)
+library(lmerTest)
+library(ggplot2)
+library(tidyr)
+library(broom.mixed)
+library(purrr)
+library(reshape2)
+library(data.table)
+
+### GRAPH THEMES ###
+
+#fonts
+quartzFonts(avenir = c("Avenir Book", "Avenir Black", "Avenir Book Oblique", "Avenir Black Oblique"))
+
+#theme
+header_size = 10
+axis_size = 10
+
+#theme for plots
+avenir_theme = theme(text=element_text(size=header_size,family='avenir'),
+                     axis.text.x = element_text(color = 'black', size = axis_size, vjust = 1),
+                     axis.text.y = element_text(color = 'black', size = axis_size),
+                     axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0), face = "bold"),
+                     axis.title.x = element_text(margin = margin(t = 10, r = 10, b = 0, l = 0), face = "bold"),
+                     panel.background = element_blank(),
+                     panel.grid.major.x = element_line(color = '#e7e7e7'),
+                     panel.grid.major.y = element_line(color = '#e7e7e7'),
+                     legend.key = element_blank(),
+                     legend.title = element_text(color = 'black', size = axis_size, face = "bold"),
+                     plot.title = element_text(hjust = 0.5, face = "bold"))
+
+#set the font
+par(family = 'avenir')
+
+```
+
+#### Gabriele Paone, Arran J Davis, Emma Cohen
+##### Institute of Human Sciences, University of Oxford
+##### arran.davis@anthro.ox.ac.uk | davis.arran@gmail.com
+##### 24 September 2022
+
+## Introduction
+Previous research has suggested that exposure to environmental stress during development may enhance memory for social information (e.g., memory of previous encounters or individual recognition). We hypothesize that children from higher-stress areas of Naples (Scampia and a Roma camp) will score higher in a working memory and short-term memory tasks that use social stimuli, as compared to their peers from a lower-stress environment in the same metropolitan area (Pozzuoli). 
+
+## Data simulation
+The outcome variables are performance in two tasks measuring: (1) visuospatial social short-term memory and (2) visuospatial social working memory.
+
+The study will include participants from three different environments within Naples, Italy: one group from Scampia (higher-stress), a second one from a Roma camp (higher-stress), and a third one from Pozzuoli (lower-stress). 
+
+Here, we assuming that the effects on the outcome variables of each higher-stress environment will be the same (relative to the lower-stress environment).
+
+To estimate visuospatial social short-term memory scores for this study, we used as a reference the means and standard deviations for verbal short-term memory (_M_ = 4.9, _SD_ = 1) found with the PML-2 battery test (D’Amico & Lipari, 2020), as our visuospatial social short-term memory tests followed the PML-2 battery test methods, except using social stimuli (faces of strangers). For each population, we assumed that visuospatial social working memory scores would be one point less than they were for visuospatial social short-term memory (this was based on piloting). 
+
+We assumed an effect of 0.5 of higher-stress environments on both outcome variables (i.e., that the Roma camp and Scampia population means would be 0.5 greater than the Pozzuoli population mean). We assumed standard deviations of 1 for all outcome in all populations, except for Pozzuoli visuospatial social working memory (hypothesised to have the lowest mean scores), which we assumed to have a standard deviations of 0.75 (owing to the minimum score floor of 2).
+
+Assuming the above, and an overall mean score of 4.9 (D’Amico & Lipari, 2020) on the visuospatial social short-term memory test, we created the following distributions for each population and outcome variable:
+
+* Roma camp and Scampia scores on visuospatial social short-term memory: _M_ = 5.15 (_SD_ = 1)
+* Pozzuoli scores on visuospatial social short-term memory: _M_ = 4.65 (_SD_ = 1)
+
+* Roma camp and Scampia scores on visuospatial social working memory: _M_ = 4.15 (_SD_ = 1)
+* Pozzuoli scores on visuospatial social short-term memory: _M_ = 3.65 (_SD_ = 0.75)
+
+This led to the following data simulation. 
+
+``` {r data simulation, out.width="100%", echo=FALSE}
+
+### CREATE DATA ###
+
+#create the neighbourhood variable 
+between = list(neighbourhood = c(Scampia = "Scampia", 
+                                 Roma = "Roma camp",
+                                 Pozzuoli = "Pozzuoli "))
+
+#create the test variable
+within = list(test = c("Visuospatial social short-term memory",
+                       "Visuospatial social working memory"))
+
+within_short = list(test = c("social-short-term",
+                             "social-working"))
+
+#create scores for each neighbourhood for visuospatial social short-term memory
+scampia_vss_stm = 5.15
+roma_vss_stm = 5.15
+pozzuoli_vss_stm = 4.65
+
+#create scores for each neighbourhood for visuospatial social working memory
+scampia_vss_wm = 4.15
+roma_vss_wm = 4.15
+pozzuoli_vss_wm = 3.65
+
+#create the mean scores for each neighbourhood on each memory test 
+hood_means = list(Scampia = c(vss_stm = scampia_vss_stm, 
+                              vss_wm = scampia_vss_wm),
+                  Roma = c(vss_stm = roma_vss_stm,
+                           vss_wm = roma_vss_wm),
+                  Pozzuoli = c(vss_stm = pozzuoli_vss_stm,
+                               vss_wm = pozzuoli_vss_wm))
+
+#create the standard deviation scores for each neighbourhood on each memory test 
+hood_sds = list(Scampia = c(vss_stm = 1, 
+                            vss_wm = 1),
+                Roma = c(vss_stm = 1,
+                         vss_wm = 1),
+                Pozzuoli = c(vss_stm = 1,
+                             vss_wm = 0.75))
+
+#set the correlation of test score results for each neighbourhood
+hood_cors = list(Scampia = .6, Roma = .6, Pozzuoli = .7)
+
+#create the dataframe
+dat = sim_design(within_short, between, n = 50, 
+                 mu = hood_means, sd = hood_sds, r = hood_cors,
+                 empirical = FALSE, plot = FALSE)
+
+#make the data long format
+dat_long = melt(setDT(dat), id.vars = c("id","neighbourhood"), variable.name = "test")
+
+#ensure no values are below 2 or above 8
+dat_long$value = ifelse(dat_long$value < 2, 2,
+                        ifelse(dat_long$value > 8, 8, dat_long$value))
+
+#set contrasts of neighbourhood so that "Pozzuoli" is the reference
+contrasts(dat_long$neighbourhood) = contr.treatment(3, base = 3)
+
+#round the test scores to a whole number
+dat_long$value = round(dat_long$value, 0)
+
+### ### ###
+
+#load plot themes
+source("plot_theme.R")
+
+#plot the data
+test_labels = c("Visuospatial social\nshort-term memory",
+                "Visuospatial social\nworking memory")
+
+hood_colors = c("#999999", "#009E73", "#F0E442")
+
+scores_by_hood = ggplot(dat_long, aes(x = test, y = value)) + 
+                  geom_violin(aes(fill = neighbourhood), trim = TRUE, position = position_dodge(0.9)) +
+                  geom_boxplot(aes(fill = neighbourhood), width = 0.15, position = position_dodge(0.9)) +
+                  scale_x_discrete(labels = test_labels) +
+                  scale_y_continuous(limits = c(0,8), breaks = c(seq(0,8,1))) +
+                  scale_fill_manual(values = hood_colors) +
+                  ylab("Test score") +
+                  xlab("Test type") +
+                  labs(fill = "Neighbourhood") +
+                  aes(ymin = 0) +
+                  avenir_theme
+
+scores_by_hood
+
+```
+
+## Power analyses 
+
+Power analyses were carried out using the `faux` package in R (DeBruine, 2021). Using the dataset described above as a reference, 2,500 simulated sample datasets were created for each of the two memory test types. This was done through sampling different simulated populations of test scores (`test_score`) that varied according to neighbourhood (`environment`) sample size (50, 75, 100, 125, 150) and the effect of the high-stress environment on test scores (0.1, 0.2, 0.3, 0.4, 0.5).
+
+The following model was run on each of the 2,500 simulated sample datasets; treatment contrasts where used for the `environment` variable, with the lower-stress population (Pozzuoli) being the baseline or reference category.
+
+```
+lm(test_score ~ environment, data = data)
+```
+
+The power analyses reported below were calculated as the frequency of the 2,500 _p_-values that were less than 0.05 for the _b_-coefficient that compared the Roma camp to Pozzuoli (the effects of both high-stress environments were assumed to be the same, so only one comparison was necessary).
+
+
+```{r load and process power analysis data, fig.show="hold", echo=FALSE}
+
+#load the simulation data
+simulations = read.csv("../data/study2_social_memory_data_simulations.csv")
+
+#subset the data to each outcome type
+stm_sims = subset(simulations, simulations$outcome == "Visuospatial social short-term memory")
+wm_sims = subset(simulations, simulations$outcome == "Visuospatial social working memory")
+
+#create dataset to plot power analysis for neighbourhood main effects (both high-stress neighbourhoods were estimated to have the same effect)
+simulation_results_neighbourhood_stm = filter(stm_sims, term == "neighbourhood1") %>%
+                                            group_by(high_stress_soc_effect, participant_n) %>% 
+                                            summarise(power = mean(p.value < .05), .groups = "drop")
+
+
+simulation_results_neighbourhood_wm = filter(wm_sims, term == "neighbourhood1") %>%
+                                           group_by(high_stress_soc_effect, participant_n) %>% 
+                                           summarise(power = mean(p.value < .05), .groups = "drop")
+
+### ### ###
+
+
+
+#plot power analyse for neighbourhood effect on visuospatial social short-term memory
+stm_pa = ggplot(aes(as.character(high_stress_soc_effect), participant_n, fill = power), 
+                data = simulation_results_neighbourhood_stm) +
+          geom_tile() +
+          geom_text(aes(label = sprintf("%.2f", power)), color = "black", size = 5) +
+          scale_y_continuous(breaks = c(50, 75, 100, 125, 150)) +
+          scale_fill_viridis_c(name = "Power",
+                               limits = c(0, 1), 
+                               breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1),
+                               labels = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+          xlab("High-stress neighbourhood effect on visuospatial social short-term memory") + 
+          ylab("Participant sample size (per neighbourhood)") +
+          avenir_theme
+
+stm_pa
+
+```
+
+Above is the power analysis result with verbal short-term memory as the outcome. Results suggest that 125 participants per neighbourhood would give sufficient power (0.84) to detect mean differences of at least 0.4 between the higher and lower stress neighbourhoods.
+
+## Citations
+
+DeBruine L (2021). _faux: Simulation for Factorial Designs_. doi: 10.5281/zenodo.2669586, R package version 1.1.0, https://debruine.github.io/faux/. 
+
+D'Amico, A., & Lipari, C. (2020). _PML-2. Prove per la misurazione della memoria di lavoro_. Galton.
