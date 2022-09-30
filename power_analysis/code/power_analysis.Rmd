@@ -1,5 +1,5 @@
 ---
-title: "Power analyses and sample size determination"
+title: "Study on stress-adaptation and visuospatial social memory: Power analysis and sample size determination"
 output: html_document
 ---
 
@@ -48,10 +48,10 @@ par(family = 'avenir')
 #### Gabriele Paone, Arran J Davis, Emma Cohen
 ##### Institute of Human Sciences, University of Oxford
 ##### arran.davis@anthro.ox.ac.uk | davis.arran@gmail.com
-##### 24 September 2022
+##### 30 September 2022
 
 ## Introduction
-Previous research has suggested that exposure to environmental stress during development may enhance memory for social information (e.g., memory of previous encounters or individual recognition). We hypothesize that children from higher-stress areas of Naples (Scampia and a Roma camp) will score higher in a working memory and short-term memory tasks that use social stimuli, as compared to their peers from a lower-stress environment in the same metropolitan area (Pozzuoli). 
+Previous research has suggested that exposure to environmental stress during development may enhance memory for social information (e.g., memory of previous encounters or individual recognition). We hypothesize that children from higher-stress areas of Naples, Italy (Scampia and a Roma camp) will score higher in working and short-term memory tasks that use social stimuli than will children from a lower-stress environment in the same metropolitan area (Pozzuoli). 
 
 ## Data simulation
 The outcome variables are performance in two tasks measuring: (1) visuospatial social short-term memory and (2) visuospatial social working memory.
